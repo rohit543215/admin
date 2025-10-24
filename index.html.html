@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Admin Orders - Rohit Farsan House</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        max-width: 800px;
+        margin: 40px auto;
+        padding: 20px;
+        background: #f4f9ef;
+        color: #222;
+      }
+      h2 {
+        color: #4b7f2d;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .order {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 16px rgba(115, 191, 50, 0.3);
+      }
+      .order-header {
+        font-weight: bold;
+        color: #4b7f2d;
+        margin-bottom: 8px;
+      }
+      .customer-info {
+        margin-bottom: 12px;
+      }
+      .product-info {
+        margin-left: 15px;
+        font-size: 1.1em;
+      }
+      .complete-btn {
+        background: #73bf32;
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-size: 1em;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: background 0.3s;
+        margin-right: 10px;
+      }
+      .complete-btn[disabled] {
+        background: #bbb;
+        cursor: not-allowed;
+      }
+      .order-status {
+        font-weight: bold;
+        margin-left: 6px;
+        color: #e67e22;
+      }
+      .order-status.complete {
+        color: #16a34a;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <h2>Received Orders</h2>
+    <div id="ordersContainer">Loading orders...</div>
+    <script>
+      const supabaseUrl = "https://ixgjtbpnqrvktnabouxj.supabase.co";
+      const supabaseAnonKey =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4Z2p0YnBucXJ2a3RuYWJvdXhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNTE5NTcsImV4cCI6MjA3NTkyNzk1N30.SuCYIJmfNuxCRw-aKQg5eOtzBv7P3WiMngeFOn-I_7c";
+      const supabase = window.supabase.createClient(
+        supabaseUrl,
+        supabaseAnonKey
+      );
+
+      const ordersContainer = document.getElementById("ordersContainer");
+
+      async function markOrderComplete(orderId) {
+        const { error } = await supabase
+          .from("orders")
+          .update({ status: "Complete" })
+          .eq("id", orderId);
+        if (error) {
+          alert("Update failed: " + error.message);
+        } else {
+          loadOrders();
+        }
+      }
+
+      async function loadOrders() {
+        ordersContainer.innerHTML = "Loading orders...";
+        let { data: orders, error } = await supabase
+          .from("orders")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          ordersContainer.innerHTML = "Error loading orders: " + error.message;
+          return;
+        }
+
+        if (!orders || orders.length === 0) {
+          ordersContainer.innerHTML = "No orders yet.";
+          return;
+        }
+
+        ordersContainer.innerHTML = "";
+        orders.forEach((order) => {
+          const div = document.createElement("div");
+          div.classList.add("order");
+          const statusLabel =
+            order.status === "Complete"
+              ? `<span class="order-status complete">Complete</span>`
+              : `<span class="order-status">Pending</span>`;
+          div.innerHTML = `
+          <div class="order-header">Order ID: ${order.id} ${statusLabel}</div>
+          <div class="customer-info">
+            <strong>Address:</strong> ${order.customer_add || ""}
+            <br /><strong>Phone:</strong> ${order.customer_pho || ""}
+            <br /><strong>Order Date:</strong> ${
+              order.order_date
+                ? new Date(order.order_date).toLocaleString()
+                : ""
+            }
+          </div>
+          <div class="product-info">
+  <strong>Product:</strong> ${order.product_name} <br/>
+  <strong>Price Each:</strong> ₹${
+    order.price !== undefined ? order.price : "N/A"
+  }<br/>
+  <strong>Quantity:</strong> ${order.quantity}<br/>
+  <strong>Total Price:</strong> ₹${
+    order.price && order.quantity ? order.price * order.quantity : "N/A"
+  }
+</div>
+
+          <button class="complete-btn" ${
+            order.status === "Complete" ? "disabled" : ""
+          }
+            onclick="markOrderComplete(${order.id})">
+            Mark as Complete
+          </button>
+        `;
+          ordersContainer.appendChild(div);
+        });
+      }
+
+      // Expose for inline onclick
+      window.markOrderComplete = markOrderComplete;
+
+      loadOrders();
+      setInterval(loadOrders, 10000);
+    </script>
+  </body>
+</html>
